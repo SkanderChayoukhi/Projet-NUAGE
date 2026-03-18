@@ -1,0 +1,113 @@
+version: "3.8"
+
+services:
+
+  # ─── VOTE (Python/Flask) ───────────────────────────────────────────
+  vote:
+    build:
+      context: ./vote
+    networks:
+      - front-net
+      - back-net
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ─── RESULT (Node.js) ─────────────────────────────────────────────
+  result:
+    build:
+      context: ./result
+    networks:
+      - front-net
+      - back-net
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─── WORKER (.NET) ────────────────────────────────────────────────
+  worker:
+    build:
+      context: ./worker
+    networks:
+      - back-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─── SEED (Python + Bash) ─────────────────────────────────────────
+  seed:
+    build:
+      context: ./seed
+    networks:
+      - front-net
+    depends_on:
+      - vote
+    restart: no
+
+  # ─── NGINX (Load Balancer) ────────────────────────────────────────
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "80:80"
+    networks:
+      - front-net
+    depends_on:
+      - vote
+      - result
+    restart: unless-stopped
+
+  # ─── REDIS (No Dockerfile) ────────────────────────────────────────
+  redis:
+    image: redis:alpine
+    networks:
+      - back-net
+    volumes:
+      - ./healthchecks:/healthchecks
+    healthcheck:
+      test: ["CMD", "sh", "/healthchecks/redis.sh"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ─── POSTGRESQL (No Dockerfile) ───────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    networks:
+      - back-net
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./healthchecks:/healthchecks
+    healthcheck:
+      test: ["CMD", "sh", "/healthchecks/postgres.sh"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+# ─── VOLUMES ──────────────────────────────────────────────────────────
+volumes:
+  db-data:
+
+# ─── NETWORKS ─────────────────────────────────────────────────────────
+networks:
+  front-net:
+  back-net:
