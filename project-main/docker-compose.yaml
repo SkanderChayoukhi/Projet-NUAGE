@@ -48,7 +48,7 @@ services:
   # ─── SEED (Python + Bash) ─────────────────────────────────────────
   seed:
     build:
-      context: ./seed
+      context: ./seed-data
     networks:
       - front-net
     depends_on:
