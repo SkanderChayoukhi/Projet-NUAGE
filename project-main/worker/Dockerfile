@@ -4,7 +4,7 @@ ARG TARGETARCH
 ARG BUILDPLATFORM
 RUN echo "Building on $BUILDPLATFORM for $TARGETPLATFORM/$TARGETARCH"
 WORKDIR /source
-COPY source/ .
+COPY . .
 RUN dotnet restore -a $TARGETARCH
 RUN dotnet publish -c release -o /app -a $TARGETARCH --self-contained false --no-restore
 
