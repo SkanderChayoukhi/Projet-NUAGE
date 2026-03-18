@@ -22,6 +22,8 @@ services:
   result:
     build:
       context: ./result
+    ports:
+      - "4000:4000"
     networks:
       - front-net
       - back-net
@@ -59,7 +61,7 @@ services:
     build:
       context: ./nginx
     ports:
-      - "80:80"
+      - "8000:8000"
     networks:
       - front-net
     depends_on:
