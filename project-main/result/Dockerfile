@@ -1,18 +1,18 @@
-# Use official Node.js LTS image
-FROM node:18
+FROM node:18-slim
 
-# Set working directory
-WORKDIR /usr/src/app
+WORKDIR /usr/local/app
 
-# Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install --production
 
-# Copy application source
+RUN npm install -g nodemon \
+    && npm ci \
+    && npm cache clean --force \
+    && mv /usr/local/app/node_modules /node_modules
+
 COPY . .
 
-# Expose the port the app runs on
+ENV PORT=4000
+
 EXPOSE 4000
 
-# Start the server
 CMD ["node", "server.js"]
