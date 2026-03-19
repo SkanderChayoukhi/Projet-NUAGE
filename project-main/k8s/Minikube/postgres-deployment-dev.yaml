@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  labels:
+    app: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      initContainers:
+        - name: install-healthcheck
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - cp /config/postgres.sh /healthchecks/postgres.sh && chmod +x /healthchecks/postgres.sh
+          volumeMounts:
+            - name: healthcheck-script
+              mountPath: /config
+            - name: healthchecks
+              mountPath: /healthchecks
+      containers:
+        - name: db
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_DB
+              value: postgres
+          ports:
+            - containerPort: 5432
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - /healthchecks/postgres.sh
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+              subPath: data
+            - name: healthchecks
+              mountPath: /healthchecks
+      volumes:
+        - name: healthcheck-script
+          configMap:
+            name: postgres-healthcheck
+        - name: healthchecks
+          emptyDir: {}
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: db-data
