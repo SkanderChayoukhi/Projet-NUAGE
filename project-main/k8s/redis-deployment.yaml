@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      initContainers:
+        - name: install-healthcheck
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - cp /config/redis.sh /healthchecks/redis.sh && chmod +x /healthchecks/redis.sh
+          volumeMounts:
+            - name: healthcheck-script
+              mountPath: /config
+            - name: healthchecks
+              mountPath: /healthchecks
+      containers:
+        - name: redis
+          image: redis:alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - /healthchecks/redis.sh
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: healthchecks
+              mountPath: /healthchecks
+      volumes:
+        - name: healthcheck-script
+          configMap:
+            name: redis-healthcheck
+        - name: healthchecks
+          emptyDir: {}
