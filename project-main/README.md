@@ -178,7 +178,7 @@ Note that this command can be found in the "Setup Instructions" button in the re
 
 
 * In case you struggle making this work, you can use our public images from Docker Hub during the session (not in the repo you will send us).
-  The tags are prefixed with `eloip13009/voting-fila3`, for example `eloip13009/voting-fila3/result`.
+  The tags are prefixed with `eloip13009`, for example `eloip13009/result`.
   The suffixes are `vote`, `result`, `worker` and `seed-data`
   <!-- `postgres-hs` and `redis-hs`. -->
 
