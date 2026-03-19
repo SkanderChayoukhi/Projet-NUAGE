@@ -2,6 +2,7 @@ services:
 
   # ─── VOTE (Python/Flask) ───────────────────────────────────────────
   vote:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490607/voting-image/vote
     build:
       context: ./vote
     networks:
@@ -20,6 +21,7 @@ services:
 
   # ─── RESULT (Node.js) ─────────────────────────────────────────────
   result:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490607/voting-image/result
     build:
       context: ./result
     ports:
@@ -34,6 +36,7 @@ services:
 
   # ─── WORKER (.NET) ────────────────────────────────────────────────
   worker:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490607/voting-image/worker
     build:
       context: ./worker
     networks:
@@ -47,6 +50,7 @@ services:
 
   # ─── SEED (Python + Bash) ─────────────────────────────────────────
   seed:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490607/voting-image/seed-data
     build:
       context: ./seed-data
     networks:
@@ -58,6 +62,7 @@ services:
 
   # ─── NGINX (Load Balancer) ────────────────────────────────────────
   nginx:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490607/voting-image/nginx
     build:
       context: ./nginx
     ports:
