@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: seed-data-cron
+  labels:
+    app: seed-data
+spec:
+  schedule: "@daily"
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: seed-data
+            image: seed-data:local
+            imagePullPolicy: Never
+            command: ["/bin/sh", "-c", "./generate-votes.sh"]

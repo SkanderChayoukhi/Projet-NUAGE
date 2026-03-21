@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-data
+  labels:
+    app: seed-data
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: seed-data
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: seed-data
+        image: seed-data:local
+        imagePullPolicy: Never
+        command: ["/bin/sh", "-c", "./generate-votes.sh"]

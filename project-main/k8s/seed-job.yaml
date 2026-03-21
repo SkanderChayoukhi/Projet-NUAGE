@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-data
+  labels:
+    app: seed-data
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      name: seed-data
+      labels:
+        app: seed-data
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: seed-data
+        image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/seed-data
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: TARGET_URL
+          value: "http://nginx:8000"  # adapt if service s'appelle différemment
+        command: ["/bin/sh", "-c", "./generate-votes.sh"]
+      # optionnel : limiter ressources si besoin
+      # resources:
+      #   requests:
+      #     cpu: "100m"
+      #     memory: "128Mi"
+      #   limits:
+      #     cpu: "200m"
+      #     memory: "256Mi"
