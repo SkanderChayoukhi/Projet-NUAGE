@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: result
-          image: europe-west3-docker.pkg.dev/firas-project-imt/voting-image/result
+          image: europe-west3-docker.pkg.dev/tuto-devops-490607/voting-image/result:latest
           ports:
             - containerPort: 4000
           env:
