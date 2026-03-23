@@ -39,7 +39,12 @@ spec:
             - name: POSTGRES_DB
               value: postgres
           ports:
-            - containerPort: 5432
+   The tutorial on Terraform did not give you _all_ elements for this project: it was on purpose.
+The point is for you to learn how to seek information in providers and other documentations.
+But most elements in the tutorials can be directly applied.
+
+**IMPORTANT**: Make sure to organize your Terraform code well. Attention will be given to the repo organization, README, variable files, etc.
+The different parts of Terraform code should be segmented within directories. To be able to use the data from other directories, use either a local _module_ or a `terraform_remote_state` resource which allows you to refer to output variables.         - containerPort: 5432
           livenessProbe:
             exec:
               command:

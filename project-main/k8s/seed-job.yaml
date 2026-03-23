@@ -15,12 +15,16 @@ spec:
       restartPolicy: Never
       containers:
       - name: seed-data
-        image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/seed-data
+        image: europe-west3-docker.pkg.dev/tuto-devops-490607/voting-image/seed-data:latest
         imagePullPolicy: IfNotPresent
-        env:
-        - name: TARGET_URL
-          value: "http://nginx:8000"  # adapt if service s'appelle différemment
-        command: ["/bin/sh", "-c", "./generate-votes.sh"]
+        command:
+          - /bin/sh
+          - -c
+          - |
+            set -e
+            ab -n 1000 -c 50 -p posta -T "application/x-www-form-urlencoded" http://vote:5000/
+            ab -n 1000 -c 50 -p postb -T "application/x-www-form-urlencoded" http://vote:5000/
+            ab -n 1000 -c 50 -p posta -T "application/x-www-form-urlencoded" http://vote:5000/
       # optionnel : limiter ressources si besoin
       # resources:
       #   requests:
