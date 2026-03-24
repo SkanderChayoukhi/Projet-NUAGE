@@ -2,6 +2,11 @@ variable "image_name" {
   type = string
 }
 
+variable "push_image" {
+  type    = bool
+  default = false
+}
+
 variable "container_name" {
   type = string
 }
