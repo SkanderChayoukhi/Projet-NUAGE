@@ -18,13 +18,18 @@ spec:
         - name: vote
           image: vote:local
           imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: app-config
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
           ports:
             - containerPort: 5000
-          env:
-            - name: OPTION_A
-              value: Cats
-            - name: OPTION_B
-              value: Dogs
           livenessProbe:
             httpGet:
               path: /

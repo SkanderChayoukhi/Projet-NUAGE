@@ -18,3 +18,13 @@ spec:
         - name: worker
           image: worker:local
           imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: app-config
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"

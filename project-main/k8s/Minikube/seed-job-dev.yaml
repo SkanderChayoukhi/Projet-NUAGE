@@ -16,4 +16,11 @@ spec:
       - name: seed-data
         image: seed-data:local
         imagePullPolicy: Never
-        command: ["/bin/sh", "-c", "./generate-votes.sh"]
+        command:
+          - /bin/sh
+          - -c
+          - |
+            set -e
+            ab -n 1000 -c 50 -p posta -T "application/x-www-form-urlencoded" http://vote:5000/
+            ab -n 1000 -c 50 -p postb -T "application/x-www-form-urlencoded" http://vote:5000/
+            ab -n 1000 -c 50 -p posta -T "application/x-www-form-urlencoded" http://vote:5000/

@@ -17,19 +17,38 @@ spec:
       initContainers:
         - name: install-healthcheck
           image: busybox:1.36
+          imagePullPolicy: Never
           command:
             - sh
             - -c
-            - cp /config/redis.sh /healthchecks/redis.sh && chmod +x /healthchecks/redis.sh
+            - |
+              cat <<'EOF' > /healthchecks/redis.sh
+              #!/bin/sh
+              set -eo pipefail
+
+              host="$(hostname -i || echo '127.0.0.1')"
+
+              if ping="$(redis-cli -h "$host" ping)" && [ "$ping" = 'PONG' ]; then
+                exit 0
+              fi
+
+              exit 1
+              EOF
+              chmod +x /healthchecks/redis.sh
           volumeMounts:
-            - name: healthcheck-script
-              mountPath: /config
             - name: healthchecks
               mountPath: /healthchecks
       containers:
         - name: redis
           image: redis:alpine
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
           ports:
             - containerPort: 6379
           livenessProbe:
@@ -45,8 +64,5 @@ spec:
             - name: healthchecks
               mountPath: /healthchecks
       volumes:
-        - name: healthcheck-script
-          configMap:
-            name: redis-healthcheck
         - name: healthchecks
           emptyDir: {}

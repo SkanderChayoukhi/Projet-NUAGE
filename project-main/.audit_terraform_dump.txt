@@ -1,0 +1,942 @@
+﻿###FILE:docker-compose.yaml
+services:
+
+  # â”€â”€â”€ VOTE (Python/Flask) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  vote:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/vote
+    build:
+      context: ./vote
+    networks:
+      - front-net
+      - back-net
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # â”€â”€â”€ RESULT (Node.js) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  result:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/result
+    build:
+      context: ./result
+    ports:
+      - "4000:4000"
+    networks:
+      - front-net
+      - back-net
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # â”€â”€â”€ WORKER (.NET) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  worker:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/worker
+    build:
+      context: ./worker
+    networks:
+      - back-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # â”€â”€â”€ SEED (Python + Bash) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  seed:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/seed-data
+    build:
+      context: ./seed-data
+    networks:
+      - front-net
+    depends_on:
+      nginx :
+          condition: service_started
+    restart: no
+
+  # â”€â”€â”€ NGINX (Load Balancer) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  nginx:
+    image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/nginx
+    build:
+      context: ./nginx
+    ports:
+      - "8000:8000"
+    networks:
+      - front-net
+    depends_on:
+      - vote
+      - result
+    restart: unless-stopped
+
+  # â”€â”€â”€ REDIS (No Dockerfile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  redis:
+    image: redis:alpine
+    networks:
+      - back-net
+    volumes:
+      - ./healthchecks:/healthchecks
+    healthcheck:
+      test: ["CMD", "sh", "/healthchecks/redis.sh"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # â”€â”€â”€ POSTGRESQL (No Dockerfile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    networks:
+      - back-net
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./healthchecks:/healthchecks
+    healthcheck:
+      test: ["CMD", "sh", "/healthchecks/postgres.sh"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+# â”€â”€â”€ VOLUMES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+volumes:
+  db-data:
+
+# â”€â”€â”€ NETWORKS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+networks:
+  front-net:
+  back-net:
+
+###FILE:gke-config.tf
+
+
+data "google_container_cluster" "my_cluster" {
+  name     = var.gke_cluster_name
+  location = var.gcp_zone
+
+  depends_on = [google_container_node_pool.primary]
+}
+
+# Configure kubernetes provider with Oauth2 access token.
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/client_config
+# This fetches a new token, which will expire in 1 hour.
+data "google_client_config" "default" {}
+
+provider "kubernetes" {
+  host  = "https://${data.google_container_cluster.my_cluster.endpoint}"
+  token = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(
+    data.google_container_cluster.my_cluster.master_auth[0].cluster_ca_certificate,
+  )
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\locals.tf
+locals {
+  project_root      = abspath("${path.root}/..")
+  healthchecks_path = "${local.project_root}/healthchecks"
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\main.tf
+module "redis" {
+  source = "./modules/redis"
+
+  container_name    = "redis"
+  network_name      = docker_network.back_net.name
+  healthchecks_path = local.healthchecks_path
+}
+
+module "postgres" {
+  source = "./modules/postgres"
+
+  container_name    = "db"
+  network_name      = docker_network.back_net.name
+  healthchecks_path = local.healthchecks_path
+  volume_name       = docker_volume.db_data.name
+  postgres_user     = var.postgres_user
+  postgres_password = var.postgres_password
+  postgres_db       = var.postgres_db
+}
+
+module "vote" {
+  source = "./modules/vote"
+
+  image_name         = var.image_vote
+  container_name     = "vote"
+  project_root       = local.project_root
+  front_network_name = docker_network.front_net.name
+  back_network_name  = docker_network.back_net.name
+
+  depends_on = [module.redis]
+}
+
+module "result" {
+  source = "./modules/result"
+
+  image_name         = var.image_result
+  container_name     = "result"
+  project_root       = local.project_root
+  front_network_name = docker_network.front_net.name
+  back_network_name  = docker_network.back_net.name
+
+  depends_on = [module.postgres]
+}
+
+module "worker" {
+  source = "./modules/worker"
+
+  image_name        = var.image_worker
+  container_name    = "worker"
+  project_root      = local.project_root
+  back_network_name = docker_network.back_net.name
+
+  depends_on = [module.redis, module.postgres]
+}
+
+module "nginx" {
+  source = "./modules/nginx"
+
+  image_name         = var.image_nginx
+  container_name     = "nginx"
+  project_root       = local.project_root
+  front_network_name = docker_network.front_net.name
+
+  depends_on = [module.vote, module.result]
+}
+
+module "seed" {
+  source = "./modules/seed"
+
+  image_name         = var.image_seed
+  container_name     = "seed"
+  project_root       = local.project_root
+  front_network_name = docker_network.front_net.name
+
+  depends_on = [module.nginx]
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\nginx\main.tf
+resource "docker_image" "this" {
+  name = var.image_name
+
+  build {
+    context = "${var.project_root}/nginx"
+  }
+}
+
+resource "docker_container" "this" {
+  image   = docker_image.this.image_id
+  name    = var.container_name
+  restart = "unless-stopped"
+
+  ports {
+    internal = 8000
+    external = 8000
+    protocol = "tcp"
+  }
+
+  networks_advanced {
+    name = var.front_network_name
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\nginx\outputs.tf
+output "container_id" {
+  value = docker_container.this.id
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\nginx\variables.tf
+variable "image_name" {
+  type = string
+}
+
+variable "container_name" {
+  type = string
+}
+
+variable "project_root" {
+  type = string
+}
+
+variable "front_network_name" {
+  type = string
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\nginx\versions.tf
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\postgres\main.tf
+resource "docker_image" "this" {
+  name = "postgres:15-alpine"
+}
+
+resource "docker_container" "this" {
+  image   = docker_image.this.image_id
+  name    = var.container_name
+  restart = "unless-stopped"
+
+  env = [
+    "POSTGRES_USER=${var.postgres_user}",
+    "POSTGRES_PASSWORD=${var.postgres_password}",
+    "POSTGRES_DB=${var.postgres_db}",
+  ]
+
+  networks_advanced {
+    name = var.network_name
+  }
+
+  mounts {
+    target = "/var/lib/postgresql/data"
+    source = var.volume_name
+    type   = "volume"
+  }
+
+  mounts {
+    target = "/healthchecks"
+    source = var.healthchecks_path
+    type   = "bind"
+  }
+
+  healthcheck {
+    test         = ["CMD", "sh", "/healthchecks/postgres.sh"]
+    interval     = "15s"
+    timeout      = "5s"
+    retries      = 3
+    start_period = "10s"
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\postgres\outputs.tf
+output "container_id" {
+  value = docker_container.this.id
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\postgres\variables.tf
+variable "container_name" {
+  type = string
+}
+
+variable "network_name" {
+  type = string
+}
+
+variable "healthchecks_path" {
+  type = string
+}
+
+variable "volume_name" {
+  type = string
+}
+
+variable "postgres_user" {
+  type = string
+}
+
+variable "postgres_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "postgres_db" {
+  type = string
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\postgres\versions.tf
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\redis\main.tf
+resource "docker_image" "this" {
+  name = "redis:alpine"
+}
+
+resource "docker_container" "this" {
+  image   = docker_image.this.image_id
+  name    = var.container_name
+  restart = "unless-stopped"
+
+  networks_advanced {
+    name = var.network_name
+  }
+
+  mounts {
+    target = "/healthchecks"
+    source = var.healthchecks_path
+    type   = "bind"
+  }
+
+  healthcheck {
+    test         = ["CMD", "sh", "/healthchecks/redis.sh"]
+    interval     = "15s"
+    timeout      = "5s"
+    retries      = 3
+    start_period = "10s"
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\redis\outputs.tf
+output "container_id" {
+  value = docker_container.this.id
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\redis\variables.tf
+variable "container_name" {
+  type = string
+}
+
+variable "network_name" {
+  type = string
+}
+
+variable "healthchecks_path" {
+  type = string
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\redis\versions.tf
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\result\main.tf
+resource "docker_image" "this" {
+  name = var.image_name
+
+  build {
+    context = "${var.project_root}/result"
+  }
+}
+
+resource "docker_container" "this" {
+  image   = docker_image.this.image_id
+  name    = var.container_name
+  restart = "unless-stopped"
+
+  env = ["PORT=4000"]
+
+  ports {
+    internal = 4000
+    external = 4000
+    protocol = "tcp"
+  }
+
+  networks_advanced {
+    name = var.front_network_name
+  }
+
+  networks_advanced {
+    name = var.back_network_name
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\result\outputs.tf
+output "container_id" {
+  value = docker_container.this.id
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\result\variables.tf
+variable "image_name" {
+  type = string
+}
+
+variable "container_name" {
+  type = string
+}
+
+variable "project_root" {
+  type = string
+}
+
+variable "front_network_name" {
+  type = string
+}
+
+variable "back_network_name" {
+  type = string
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\result\versions.tf
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\seed\main.tf
+resource "docker_image" "this" {
+  name = var.image_name
+
+  build {
+    context = "${var.project_root}/seed-data"
+  }
+}
+
+resource "docker_container" "this" {
+  image = docker_image.this.image_id
+  name  = var.container_name
+
+  restart = "no"
+
+  networks_advanced {
+    name = var.front_network_name
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\seed\outputs.tf
+output "container_id" {
+  value = docker_container.this.id
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\seed\variables.tf
+variable "image_name" {
+  type = string
+}
+
+variable "container_name" {
+  type = string
+}
+
+variable "project_root" {
+  type = string
+}
+
+variable "front_network_name" {
+  type = string
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\seed\versions.tf
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\vote\main.tf
+resource "docker_image" "this" {
+  name = var.image_name
+
+  build {
+    context = "${var.project_root}/vote"
+  }
+}
+
+resource "docker_container" "this" {
+  image   = docker_image.this.image_id
+  name    = var.container_name
+  restart = "unless-stopped"
+
+  networks_advanced {
+    name = var.front_network_name
+  }
+
+  networks_advanced {
+    name = var.back_network_name
+  }
+
+  healthcheck {
+    test         = ["CMD", "curl", "-f", "http://localhost:5000"]
+    interval     = "15s"
+    timeout      = "5s"
+    retries      = 3
+    start_period = "10s"
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\vote\outputs.tf
+output "container_id" {
+  value = docker_container.this.id
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\vote\variables.tf
+variable "image_name" {
+  type = string
+}
+
+variable "container_name" {
+  type = string
+}
+
+variable "project_root" {
+  type = string
+}
+
+variable "front_network_name" {
+  type = string
+}
+
+variable "back_network_name" {
+  type = string
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\vote\versions.tf
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\worker\main.tf
+resource "docker_image" "this" {
+  name = var.image_name
+
+  build {
+    context = "${var.project_root}/worker"
+  }
+}
+
+resource "docker_container" "this" {
+  image   = docker_image.this.image_id
+  name    = var.container_name
+  restart = "unless-stopped"
+
+  networks_advanced {
+    name = var.back_network_name
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\worker\outputs.tf
+output "container_id" {
+  value = docker_container.this.id
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\worker\variables.tf
+variable "image_name" {
+  type = string
+}
+
+variable "container_name" {
+  type = string
+}
+
+variable "project_root" {
+  type = string
+}
+
+variable "back_network_name" {
+  type = string
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\modules\worker\versions.tf
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\networks.tf
+resource "docker_network" "front_net" {
+  name = "front-net"
+}
+
+resource "docker_network" "back_net" {
+  name = "back-net"
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\outputs.tf
+output "container_ids" {
+  value = {
+    redis  = module.redis.container_id
+    db     = module.postgres.container_id
+    vote   = module.vote.container_id
+    result = module.result.container_id
+    worker = module.worker.container_id
+    nginx  = module.nginx.container_id
+    seed   = module.seed.container_id
+  }
+}
+
+output "entrypoint_url" {
+  value = "http://localhost:8000"
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\provider.tf
+provider "docker" {}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\variables.tf
+variable "image_vote" {
+  description = "Image name for vote service"
+  type        = string
+  default     = "europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/vote:latest"
+}
+
+variable "image_result" {
+  description = "Image name for result service"
+  type        = string
+  default     = "europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/result:latest"
+}
+
+variable "image_worker" {
+  description = "Image name for worker service"
+  type        = string
+  default     = "europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/worker:latest"
+}
+
+variable "image_seed" {
+  description = "Image name for seed service"
+  type        = string
+  default     = "europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/seed-data:latest"
+}
+
+variable "image_nginx" {
+  description = "Image name for nginx service"
+  type        = string
+  default     = "europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/nginx:latest"
+}
+
+variable "postgres_user" {
+  description = "Postgres username"
+  type        = string
+  default     = "postgres"
+}
+
+variable "postgres_password" {
+  description = "Postgres password"
+  type        = string
+  default     = "postgres"
+  sensitive   = true
+}
+
+variable "postgres_db" {
+  description = "Postgres database name"
+  type        = string
+  default     = "postgres"
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\versions.tf
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform\volumes.tf
+resource "docker_volume" "db_data" {
+  name = "db-data"
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform-gcp\gke.tf
+resource "google_container_cluster" "primary" {
+  name     = var.gke_cluster_name
+  location = var.gcp_zone
+
+  # Required by the course instructions.
+  deletion_protection = true
+
+  remove_default_node_pool = true
+  initial_node_count       = 1
+
+  network    = "default"
+  subnetwork = "default"
+}
+
+resource "google_container_node_pool" "primary" {
+  name       = "primary-pool"
+  location   = var.gcp_zone
+  cluster    = google_container_cluster.primary.name
+  node_count = var.gke_node_count
+
+  node_config {
+    machine_type = "e2-medium"
+    oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+  }
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform-gcp\gke-config.tf
+data "google_container_cluster" "my_cluster" {
+  name     = var.gke_cluster_name
+  location = var.gcp_zone
+
+  depends_on = [google_container_node_pool.primary]
+}
+
+# Configure kubernetes provider with Oauth2 access token.
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/client_config
+# This fetches a new token, which will expire in 1 hour.
+data "google_client_config" "default" {}
+
+provider "kubernetes" {
+  host  = "https://${data.google_container_cluster.my_cluster.endpoint}"
+  token = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(
+    data.google_container_cluster.my_cluster.master_auth[0].cluster_ca_certificate,
+  )
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform-gcp\k8s-manifests.tf
+locals {
+  raw_manifest_map = {
+    for rel_path in var.manifest_files :
+    rel_path => yamldecode(file("${path.root}/../${rel_path}"))
+  }
+
+  manifest_map = {
+    for rel_path, manifest in local.raw_manifest_map :
+    rel_path => merge(
+      manifest,
+      {
+        metadata = merge(
+          lookup(manifest, "metadata", {}),
+          { namespace = var.k8s_namespace }
+        )
+      }
+    )
+  }
+}
+
+resource "kubernetes_manifest" "app" {
+  for_each = local.manifest_map
+
+  manifest = each.value
+
+  # Jobs get controller labels injected by Kubernetes after creation.
+  # Mark these fields as computed to avoid provider inconsistency errors.
+  computed_fields = [
+    "metadata.labels",
+    "spec.template.metadata.labels",
+  ]
+
+  depends_on = [google_container_node_pool.primary]
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform-gcp\outputs.tf
+output "gke_cluster_name" {
+  value = google_container_cluster.primary.name
+}
+
+output "gke_cluster_location" {
+  value = google_container_cluster.primary.location
+}
+
+output "gke_cluster_endpoint" {
+  value = google_container_cluster.primary.endpoint
+}
+
+output "applied_manifest_files" {
+  value = keys(kubernetes_manifest.app)
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform-gcp\providers.tf
+provider "google" {
+  project = var.gcp_project_id
+  region  = var.gcp_region
+  zone    = var.gcp_zone
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform-gcp\variables.tf
+variable "gcp_project_id" {
+  description = "GCP project ID"
+  type        = string
+}
+
+variable "gcp_region" {
+  description = "GCP region for provider"
+  type        = string
+  default     = "europe-west3"
+}
+
+variable "gcp_zone" {
+  description = "GCP zone used for the GKE cluster location"
+  type        = string
+  default     = "europe-west3-a"
+}
+
+variable "gke_cluster_name" {
+  description = "GKE cluster name"
+  type        = string
+  default     = "voting-app-cluster"
+}
+
+variable "gke_node_count" {
+  description = "Number of nodes in the GKE node pool (mandatory: 1)"
+  type        = number
+  default     = 1
+}
+
+variable "manifest_files" {
+  description = "Mandatory Kubernetes manifests to apply with kubernetes_manifest"
+  type        = list(string)
+  default = [
+    "k8s/app-configmap.yaml",
+    "k8s/db-configmap.yaml",
+    "k8s/db-pvc.yaml",
+    "k8s/db-service.yaml",
+    "k8s/db-deployment.yaml",
+    "k8s/redis-configmap.yaml",
+    "k8s/redis-deployment.yaml",
+    "k8s/redis-service.yaml",
+    "k8s/vote-deployment.yaml",
+    "k8s/vote-service.yaml",
+    "k8s/vote-hpa.yaml",
+    "k8s/result-deployment.yaml",
+    "k8s/result-service.yaml",
+    "k8s/worker-deployment.yaml",
+    "k8s/seed-job.yaml"
+  ]
+}
+
+variable "k8s_namespace" {
+  description = "Namespace used for all namespaced Kubernetes resources"
+  type        = string
+  default     = "default"
+}
+
+###FILE:E:\IMT\FISE_A3_LOGIN\S2\Projet_devops\Projet-NUAGE\project-main\terraform-gcp\versions.tf
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.30"
+    }
+  }
+}

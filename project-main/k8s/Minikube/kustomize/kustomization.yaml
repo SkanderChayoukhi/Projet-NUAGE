@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../app-configmap-dev.yaml
+  - ../postgres-pvc-dev.yaml
+  - ../postgres-service-dev.yaml
+  - ../postgres-deployment-dev.yaml
+  - ../redis-service-dev.yaml
+  - ../redis-deployment-dev.yaml
+  - ../worker-deployment-dev.yaml
+  - ../vote-deployment-dev.yaml
+  - ../vote-service-dev.yaml
+  - ../vote-hpa-dev.yaml
+  - ../result-deployment-dev.yaml
+  - ../result-service-dev.yaml
+  - ../seed-job-dev.yaml
+
+configMapGenerator:
+  - name: app-config
+    behavior: replace
+    literals:
+      - OPTION_A=Cats
+      - OPTION_B=Dogs
+      - PORT=4000
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
