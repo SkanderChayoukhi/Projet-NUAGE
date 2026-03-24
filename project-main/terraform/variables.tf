@@ -28,6 +28,12 @@ variable "image_nginx" {
   default     = "europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/nginx:latest"
 }
 
+variable "push_to_registry" {
+  description = "When true, push locally built images to their configured registry"
+  type        = bool
+  default     = false
+}
+
 variable "postgres_user" {
   description = "Postgres username"
   type        = string

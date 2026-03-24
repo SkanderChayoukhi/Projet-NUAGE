@@ -22,6 +22,7 @@ module "vote" {
   source = "./modules/vote"
 
   image_name         = var.image_vote
+  push_image         = var.push_to_registry
   container_name     = "vote"
   project_root       = local.project_root
   front_network_name = docker_network.front_net.name
@@ -34,6 +35,7 @@ module "result" {
   source = "./modules/result"
 
   image_name         = var.image_result
+  push_image         = var.push_to_registry
   container_name     = "result"
   project_root       = local.project_root
   front_network_name = docker_network.front_net.name
@@ -46,6 +48,7 @@ module "worker" {
   source = "./modules/worker"
 
   image_name        = var.image_worker
+  push_image        = var.push_to_registry
   container_name    = "worker"
   project_root      = local.project_root
   back_network_name = docker_network.back_net.name
@@ -57,6 +60,7 @@ module "nginx" {
   source = "./modules/nginx"
 
   image_name         = var.image_nginx
+  push_image         = var.push_to_registry
   container_name     = "nginx"
   project_root       = local.project_root
   front_network_name = docker_network.front_net.name
@@ -68,6 +72,7 @@ module "seed" {
   source = "./modules/seed"
 
   image_name         = var.image_seed
+  push_image         = var.push_to_registry
   container_name     = "seed"
   project_root       = local.project_root
   front_network_name = docker_network.front_net.name

@@ -59,3 +59,34 @@ variable "k8s_namespace" {
   type        = string
   default     = "default"
 }
+
+variable "enable_redis_vm" {
+  description = "Enable optional Part 3: deploy Redis on a standalone VM and wire Kubernetes to it"
+  type        = bool
+  default     = false
+}
+
+variable "redis_password" {
+  description = "Redis password used by the standalone VM and application components"
+  type        = string
+  default     = "toto"
+  sensitive   = true
+}
+
+variable "redis_vm_name" {
+  description = "Name of the optional standalone Redis VM"
+  type        = string
+  default     = "redis-vm"
+}
+
+variable "redis_vm_machine_type" {
+  description = "Machine type for the optional standalone Redis VM"
+  type        = string
+  default     = "e2-micro"
+}
+
+variable "redis_vm_image" {
+  description = "Boot image for the optional standalone Redis VM"
+  type        = string
+  default     = "debian-cloud/debian-12"
+}
