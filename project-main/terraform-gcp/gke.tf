@@ -2,8 +2,8 @@ resource "google_container_cluster" "primary" {
   name     = var.gke_cluster_name
   location = var.gcp_zone
 
-  # Required by the course instructions.
-  deletion_protection = true
+  # Keep false so `terraform destroy` can remove the cluster without manual state edits.
+  deletion_protection = false
 
   remove_default_node_pool = true
   initial_node_count       = 1

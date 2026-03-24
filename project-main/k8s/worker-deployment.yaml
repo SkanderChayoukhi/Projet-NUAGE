@@ -16,8 +16,11 @@ spec:
     spec:
       containers:
       - name: worker
-        image: europe-west3-docker.pkg.dev/tuto-devops-490607/voting-image/worker:latest
+        image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/worker:latest
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: app-config
         resources:
           requests:
             cpu: "100m"

@@ -31,16 +31,27 @@ variable "manifest_files" {
   description = "Mandatory Kubernetes manifests to apply with kubernetes_manifest"
   type        = list(string)
   default = [
-    "k8s/redis-configmap.yaml",
+    "k8s/app-configmap.yaml",
+    "k8s/db-pvc.yaml",
+    "k8s/db-service.yaml",
+    "k8s/db-deployment.yaml",
     "k8s/redis-deployment.yaml",
     "k8s/redis-service.yaml",
     "k8s/vote-deployment.yaml",
     "k8s/vote-service.yaml",
+    "k8s/vote-hpa.yaml",
     "k8s/result-deployment.yaml",
     "k8s/result-service.yaml",
     "k8s/worker-deployment.yaml",
     "k8s/seed-job.yaml"
   ]
+}
+
+variable "postgres_password" {
+  description = "PostgreSQL password propagated to Kubernetes app configuration"
+  type        = string
+  default     = "postgres"
+  sensitive   = true
 }
 
 variable "k8s_namespace" {

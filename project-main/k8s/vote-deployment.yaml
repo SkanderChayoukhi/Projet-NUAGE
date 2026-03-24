@@ -16,8 +16,11 @@ spec:
     spec:
       containers:
       - name: vote
-        image: europe-west3-docker.pkg.dev/tuto-devops-490607/voting-image/vote
+        image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/vote
         imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: app-config
         resources:
           requests:
             cpu: "10m"
@@ -27,11 +30,6 @@ spec:
             memory: "256Mi"
         ports:
         - containerPort: 5000
-        env:
-        - name: OPTION_A
-          value: Cats
-        - name: OPTION_B
-          value: Dogs
         livenessProbe:
           httpGet:
             path: /

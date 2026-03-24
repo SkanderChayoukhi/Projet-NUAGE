@@ -13,7 +13,13 @@ locals {
           lookup(manifest, "metadata", {}),
           { namespace = var.k8s_namespace }
         )
-      }
+      },
+      rel_path == "k8s/app-configmap.yaml" ? {
+        data = merge(
+          lookup(manifest, "data", {}),
+          { POSTGRES_PASSWORD = var.postgres_password }
+        )
+      } : {}
     )
   }
 }

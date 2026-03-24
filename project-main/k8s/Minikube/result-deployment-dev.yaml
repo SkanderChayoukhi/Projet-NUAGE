@@ -18,6 +18,16 @@ spec:
         - name: result
           image: result:local
           imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: app-config
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
           ports:
             - containerPort: 4000
           livenessProbe:
