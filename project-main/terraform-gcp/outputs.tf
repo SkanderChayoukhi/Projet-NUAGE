@@ -17,3 +17,9 @@ output "applied_manifest_files" {
 output "redis_vm_internal_ip" {
   value = var.enable_redis_vm ? google_compute_instance.redis_vm[0].network_interface[0].network_ip : null
 }
+
+# Shared from Part 1 (terraform/) via terraform_remote_state 
+# requirement that data must flow between directories via module or remote state.
+output "docker_local_entrypoint" {
+  value = data.terraform_remote_state.docker.outputs.entrypoint_url
+}

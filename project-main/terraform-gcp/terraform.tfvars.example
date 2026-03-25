@@ -1,5 +1,40 @@
-gcp_project_id  = "your-gcp-project-id"
-gcp_region      = "europe-west3"
-gcp_zone        = "europe-west3-a"
+# terraform.tfvars.example – Part 2: GCP + Kubernetes (terraform-gcp/)
+# Copy this file to terraform.tfvars and fill in the real values.
+# Never commit terraform.tfvars to version control.
+
+# ── GCP identity ───────────────────────────────────────────────────────────────
+# The GCP project ID where all resources will be created.  No default is provided.
+
+gcp_project_id = "YOUR_GCP_PROJECT_ID"   # Required: e.g. "my-project-123456"
+
+# ── GCP location ───────────────────────────────────────────────────────────────
+# Must be a zone (not a region) so that the GKE cluster counts as a single node.
+
+gcp_region = "europe-west3"
+gcp_zone   = "europe-west3-a"
+
+# ── GKE cluster ────────────────────────────────────────────────────────────────
+# The README requires exactly 1 node for the whole cluster.
+
 gke_cluster_name = "voting-app-cluster"
-gke_node_count  = 1
+gke_node_count   = 1
+
+# ── Kubernetes namespace ────────────────────────────────────────────────────────
+
+k8s_namespace = "default"
+
+# ── PostgreSQL ─────────────────────────────────────────────────────────────────
+# Must match the password used in the terraform/ directory so both stacks
+# use the same credentials.  No default is provided.
+
+postgres_password = "CHANGE_ME"   # Required: same value as in terraform/terraform.tfvars
+
+# ── Optional Part 3: Redis on a standalone GCP VM ─────────────────────────────
+# Set enable_redis_vm = true to deploy Redis outside Kubernetes.
+# redis_password is required when enable_redis_vm = true.
+
+enable_redis_vm       = false
+redis_password        = "CHANGE_ME"     # Required when enable_redis_vm = true
+redis_vm_name         = "redis-vm"
+redis_vm_machine_type = "e2-micro"
+redis_vm_image        = "debian-cloud/debian-12"
