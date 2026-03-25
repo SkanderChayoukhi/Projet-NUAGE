@@ -48,9 +48,8 @@ variable "manifest_files" {
 }
 
 variable "postgres_password" {
-  description = "PostgreSQL password propagated to Kubernetes app configuration"
+  description = "PostgreSQL password propagated to Kubernetes app configuration – must be set in terraform.tfvars or via TF_VAR_postgres_password"
   type        = string
-  default     = "postgres"
   sensitive   = true
 }
 
@@ -67,9 +66,9 @@ variable "enable_redis_vm" {
 }
 
 variable "redis_password" {
-  description = "Redis password used by the standalone VM and application components"
+  description = "Redis password used by the standalone VM and application components – must be set in terraform.tfvars or via TF_VAR_redis_password when enable_redis_vm = true"
   type        = string
-  default     = "toto"
+  default     = "" # empty string used when enable_redis_vm = false; provide a real value when enabling Redis VM
   sensitive   = true
 }
 

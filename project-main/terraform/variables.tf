@@ -41,9 +41,8 @@ variable "postgres_user" {
 }
 
 variable "postgres_password" {
-  description = "Postgres password"
+  description = "Postgres password – must be set in terraform.tfvars or via TF_VAR_postgres_password"
   type        = string
-  default     = "postgres"
   sensitive   = true
 }
 

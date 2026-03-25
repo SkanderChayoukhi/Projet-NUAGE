@@ -1,0 +1,27 @@
+# terraform.tfvars.example – Part 1: Docker (terraform/)
+# Copy this file to terraform.tfvars and fill in the real values.
+# Never commit terraform.tfvars to version control.
+
+# ── Images ─────────────────────────────────────────────────────────────────────
+# Replace YOUR_GCP_PROJECT with the real GCP project ID once the Artifact Registry
+# repository has been created.
+
+image_vote   = "europe-west3-docker.pkg.dev/YOUR_GCP_PROJECT/voting-image/vote:latest"
+image_result = "europe-west3-docker.pkg.dev/YOUR_GCP_PROJECT/voting-image/result:latest"
+image_worker = "europe-west3-docker.pkg.dev/YOUR_GCP_PROJECT/voting-image/worker:latest"
+image_seed   = "europe-west3-docker.pkg.dev/YOUR_GCP_PROJECT/voting-image/seed-data:latest"
+image_nginx  = "europe-west3-docker.pkg.dev/YOUR_GCP_PROJECT/voting-image/nginx:latest"
+
+# ── Registry push ──────────────────────────────────────────────────────────────
+# Set to true to push locally built images to the Artifact Registry after building.
+# Requires Docker to be authenticated against the registry beforehand.
+
+push_to_registry = false
+
+# ── PostgreSQL credentials ─────────────────────────────────────────────────────
+# These values are written into the PostgreSQL container environment.
+# postgres_password has NO default – it must be provided here.
+
+postgres_user     = "postgres"
+postgres_password = "CHANGE_ME"   # Required: choose a strong password
+postgres_db       = "postgres"
