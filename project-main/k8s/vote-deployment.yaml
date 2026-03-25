@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: vote
-        image: europe-west3-docker.pkg.dev/tuto-devops-490710/voting-image/vote
+        image: europe-west3-docker.pkg.dev/lab-gcp-kube/voting-image/vote
         imagePullPolicy: IfNotPresent
         envFrom:
         - configMapRef:
