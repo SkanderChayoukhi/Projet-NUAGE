@@ -33,3 +33,23 @@ resource "google_compute_instance" "redis_vm" {
 
   tags = ["redis"]
 }
+
+# Allow GKE cluster nodes to reach Redis VM on port 6379
+resource "google_compute_firewall" "allow_gke_to_redis" {
+  count       = var.enable_redis_vm ? 1 : 0
+  name        = "allow-gke-to-redis-vm"
+  network     = "default"
+  direction   = "INGRESS"
+  priority    = 1000
+  target_tags = ["redis"]
+
+  source_ranges = [
+    # GKE cluster pods use the cluster's subnet
+    google_container_cluster.primary.cluster_ipv4_cidr
+  ]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["6379"]
+  }
+}
