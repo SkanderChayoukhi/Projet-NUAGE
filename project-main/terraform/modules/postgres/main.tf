@@ -23,14 +23,8 @@ resource "docker_container" "this" {
     type   = "volume"
   }
 
-  mounts {
-    target = "/healthchecks"
-    source = var.healthchecks_path
-    type   = "bind"
-  }
-
   healthcheck {
-    test         = ["CMD", "sh", "/healthchecks/postgres.sh"]
+    test         = ["CMD-SHELL", "pg_isready -U ${var.postgres_user} -d ${var.postgres_db}"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3
