@@ -1,9 +1,8 @@
 module "redis" {
   source = "./modules/redis"
 
-  container_name    = "redis"
-  network_name      = docker_network.back_net.name
-  healthchecks_path = local.healthchecks_path
+  container_name = "redis"
+  network_name   = docker_network.back_net.name
 }
 
 module "postgres" {
@@ -11,7 +10,6 @@ module "postgres" {
 
   container_name    = "db"
   network_name      = docker_network.back_net.name
-  healthchecks_path = local.healthchecks_path
   volume_name       = docker_volume.db_data.name
   postgres_user     = var.postgres_user
   postgres_password = var.postgres_password

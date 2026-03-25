@@ -11,14 +11,8 @@ resource "docker_container" "this" {
     name = var.network_name
   }
 
-  mounts {
-    target = "/healthchecks"
-    source = var.healthchecks_path
-    type   = "bind"
-  }
-
   healthcheck {
-    test         = ["CMD", "sh", "/healthchecks/redis.sh"]
+    test         = ["CMD", "redis-cli", "ping"]
     interval     = "15s"
     timeout      = "5s"
     retries      = 3

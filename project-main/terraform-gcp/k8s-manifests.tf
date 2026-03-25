@@ -2,7 +2,7 @@ locals {
   raw_manifest_map = {
     for rel_path in var.manifest_files :
     rel_path => yamldecode(file("${path.root}/../${rel_path}"))
-    if !(var.enable_redis_vm && rel_path == "k8s/redis-deployment.yaml")
+    if rel_path != "k8s/redis-service.yaml" && !(var.enable_redis_vm && rel_path == "k8s/redis-deployment.yaml")
   }
 
   manifest_map = {
@@ -27,17 +27,31 @@ locals {
           } : {}
         )
       } : {},
-      rel_path == "k8s/redis-service.yaml" && var.enable_redis_vm ? {
-        spec = merge(
-          lookup(manifest, "spec", {}),
-          {
-            clusterIP = "None"
-            selector  = null
-          }
-        )
-      } : {}
     )
   }
+
+  redis_service_manifest = merge(
+    yamldecode(file("${path.root}/../k8s/redis-service.yaml")),
+    {
+      metadata = merge(
+        lookup(yamldecode(file("${path.root}/../k8s/redis-service.yaml")), "metadata", {}),
+        { namespace = var.k8s_namespace }
+      )
+    },
+    var.enable_redis_vm ? {
+      spec = merge(
+        lookup(yamldecode(file("${path.root}/../k8s/redis-service.yaml")), "spec", {}),
+        {
+          clusterIP = "None"
+          selector  = null
+        }
+      )
+    } : {}
+  )
+}
+
+resource "terraform_data" "redis_service_mode" {
+  input = var.enable_redis_vm ? "external-vm" : "in-cluster"
 }
 
 resource "kubernetes_manifest" "app" {
@@ -47,10 +61,23 @@ resource "kubernetes_manifest" "app" {
 
   # Jobs get controller labels injected by Kubernetes after creation.
   # Mark these fields as computed to avoid provider inconsistency errors.
-  computed_fields = [
-    "metadata.labels",
-    "spec.template.metadata.labels",
-  ]
+  computed_fields = concat(
+    [
+      "metadata.labels",
+      "spec.template.metadata.labels",
+    ],
+    each.key == "k8s/vote-deployment.yaml" ? ["spec.replicas"] : []
+  )
+
+  depends_on = [google_container_node_pool.primary]
+}
+
+resource "kubernetes_manifest" "redis_service" {
+  manifest = local.redis_service_manifest
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.redis_service_mode]
+  }
 
   depends_on = [google_container_node_pool.primary]
 }
@@ -86,5 +113,5 @@ resource "kubernetes_manifest" "redis_endpoints" {
     ]
   }
 
-  depends_on = [google_container_node_pool.primary, kubernetes_manifest.app]
+  depends_on = [google_container_node_pool.primary, kubernetes_manifest.app, kubernetes_manifest.redis_service]
 }
