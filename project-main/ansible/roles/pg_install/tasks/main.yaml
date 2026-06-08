@@ -8,6 +8,8 @@
       - python3-psycopg2
     state: present
     update_cache: true
+  tags:
+    - install
 
 # 2) Start PostgreSQL service
 - name: Start postgresql service
@@ -15,6 +17,8 @@
   ansible.builtin.service:
     name: postgresql
     state: started
+  tags:
+    - service
 
 # 3) Ensure postgres database exists
 - name: Ensure postgres database exists
@@ -23,6 +27,8 @@
   community.postgresql.postgresql_db:
     name: postgres
     state: present
+  tags:
+    - database
 
 # 4) Ensure PostgreSQL user exists with password
 - name: Ensure PostgreSQL user exists with password
@@ -33,6 +39,8 @@
     password: "{{ pg_admin_password }}"
     role_attr_flags: LOGIN
     state: present
+  tags:
+    - database
 
 # 5) Grant all privileges on postgres database
 - name: Grant all privileges on postgres database
@@ -44,6 +52,8 @@
     roles: "{{ pg_admin_user }}"
     privs: all
     state: present
+  tags:
+    - database
 
 # 6) Get pg_hba.conf path dynamically
 - name: Query pg_hba.conf path
@@ -53,11 +63,15 @@
     db: postgres
     query: "SHOW hba_file;"
   register: pg_hba_query
+  tags:
+    - config
 
 # 7) Store pg_hba.conf path in variable
 - name: Store pg_hba.conf path
   ansible.builtin.set_fact:
     pg_hba_conf_path: "{{ pg_hba_query.query_result[0].hba_file }}"
+  tags:
+    - config
 
 # 8) Allow all remote connections with md5 auth in pg_hba.conf
 - name: Allow host connections from any address with md5
@@ -72,6 +86,8 @@
     dest: "{{ pg_hba_conf_path }}"
     state: present
   notify: restart postgresql
+  tags:
+    - config
 
 # 9) Listen on all interfaces
 - name: Set listen_addresses to 0.0.0.0
@@ -81,6 +97,8 @@
     name: listen_addresses
     value: "0.0.0.0"
   notify: restart postgresql
+  tags:
+    - config
 
 # 10) Tune kernel vm.vfs_cache_pressure
 - name: Set vm.vfs_cache_pressure to 90
@@ -91,6 +109,8 @@
     sysctl_set: true
     reload: true
     state: present
+  tags:
+    - tuning
 
 # 11) Calculate shared_buffers based on available RAM
 - name: Calculate shared_buffers in MB from total RAM
@@ -103,6 +123,8 @@
         | round(0, 'floor')
         | int
       }}
+  tags:
+    - tuning
 
 # 12) Apply shared_buffers setting
 - name: Set shared_buffers
@@ -112,3 +134,44 @@
     name: shared_buffers
     value: "{{ pg_shared_buffers_mb }}MB"
   notify: restart postgresql
+  tags:
+    - tuning
+
+# 13) Validation tasks
+- name: Validate postgresql service is active
+  ansible.builtin.service_facts:
+  tags:
+    - validate
+
+- name: Assert postgresql service is running
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.services['postgresql.service'] is defined
+      - ansible_facts.services['postgresql.service'].state == 'running'
+    fail_msg: "PostgreSQL service is not running"
+    success_msg: "PostgreSQL service is running"
+  tags:
+    - validate
+
+- name: Validate PostgreSQL listens on 5432 and query version
+  block:
+    - name: Wait for PostgreSQL port 5432
+      ansible.builtin.wait_for:
+        host: 0.0.0.0
+        port: 5432
+        timeout: 10
+        state: started
+
+    - name: Query PostgreSQL version
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_query:
+        db: postgres
+        query: "SELECT version();"
+      register: pg_version_query
+
+    - name: Display PostgreSQL version
+      ansible.builtin.debug:
+        var: pg_version_query.query_result
+  tags:
+    - validate

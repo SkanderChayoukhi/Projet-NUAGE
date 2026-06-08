@@ -1,0 +1,5 @@
+---
+# This variable is resolved from encrypted file group_vars/all/vault.yaml
+# Expected structure inside vault.yaml (encrypted with ansible-vault):
+# vault_pg_admin_password: "REPLACE_WITH_STRONG_PASSWORD"
+pg_admin_password: "{{ vault_pg_admin_password }}"

@@ -17,17 +17,23 @@
       become_user: postgres
       ansible.builtin.command:
         cmd: "pg_dump -U {{ pg_db_user }} -d {{ pg_db_name }} -f {{ remote_dump_path_primary }}"
+      tags:
+        - dump
 
     - name: Transfer dump directly from primary VM to secondary VM
       # This is more efficient for large datasets because data does not transit through the Ansible controller.
       ansible.builtin.shell: |
         set -euo pipefail
         scp -o StrictHostKeyChecking=no "{{ remote_dump_path_primary }}" "{{ secondary_user }}@{{ secondary_host }}:{{ remote_dump_path_secondary }}"
+      tags:
+        - transfer
 
     - name: Remove temporary dump file on primary VM
       ansible.builtin.file:
         path: "{{ remote_dump_path_primary }}"
         state: absent
+      tags:
+        - cleanup
 
     - name: Drop replica database on secondary VM
       delegate_to: postgres_secondary
@@ -36,6 +42,8 @@
       community.postgresql.postgresql_db:
         name: "{{ pg_db_name }}"
         state: absent
+      tags:
+        - restore
 
     - name: Recreate replica database on secondary VM
       delegate_to: postgres_secondary
@@ -44,6 +52,8 @@
       community.postgresql.postgresql_db:
         name: "{{ pg_db_name }}"
         state: present
+      tags:
+        - restore
 
     - name: Restore dump on secondary VM using psql
       delegate_to: postgres_secondary
@@ -51,6 +61,8 @@
       become_user: postgres
       ansible.builtin.command:
         cmd: "psql -U {{ pg_db_user }} -d {{ pg_db_name }} -f {{ remote_dump_path_secondary }}"
+      tags:
+        - restore
 
     - name: Remove temporary dump on secondary VM
       delegate_to: postgres_secondary
@@ -58,3 +70,5 @@
       ansible.builtin.file:
         path: "{{ remote_dump_path_secondary }}"
         state: absent
+      tags:
+        - cleanup
