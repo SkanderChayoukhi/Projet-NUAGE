@@ -1,0 +1,15 @@
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: db
+  labels:
+    kubernetes.io/service-name: db
+addressType: IPv4
+ports:
+  - name: postgres
+    protocol: TCP
+    port: 5432
+endpoints:
+  - addresses:
+      # Replace with the real private IP of your OpenStack PostgreSQL VM
+      - REPLACE_WITH_OPENSTACK_VM_IP
