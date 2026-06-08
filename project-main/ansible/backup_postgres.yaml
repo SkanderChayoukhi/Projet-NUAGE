@@ -1,0 +1,38 @@
+---
+- name: Backup PostgreSQL database from dedicated VM
+  hosts: postgres_vm
+  gather_facts: true
+  become: true
+  vars:
+    pg_backup_db: "postgres"
+    pg_backup_user: "postgres"
+    backup_timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    remote_backup_path: "/tmp/postgres_{{ backup_timestamp }}.sql"
+    local_backup_dir: "backups"
+    local_backup_file: "{{ local_backup_dir }}/postgres_{{ inventory_hostname }}_{{ backup_timestamp }}.sql"
+
+  tasks:
+    - name: Ensure local backup directory exists
+      delegate_to: localhost
+      become: false
+      run_once: true
+      ansible.builtin.file:
+        path: "{{ local_backup_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Dump postgres database to temporary file on VM
+      become_user: postgres
+      ansible.builtin.command:
+        cmd: "pg_dump -U {{ pg_backup_user }} -d {{ pg_backup_db }} -f {{ remote_backup_path }}"
+
+    - name: Fetch backup file from VM to local machine
+      ansible.builtin.fetch:
+        src: "{{ remote_backup_path }}"
+        dest: "{{ local_backup_file }}"
+        flat: true
+
+    - name: Remove temporary backup file from VM
+      ansible.builtin.file:
+        path: "{{ remote_backup_path }}"
+        state: absent

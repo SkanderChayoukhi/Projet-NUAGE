@@ -1,0 +1,114 @@
+---
+# 1) Install PostgreSQL packages
+- name: Install PostgreSQL and psycopg2 packages
+  become: true
+  ansible.builtin.apt:
+    name:
+      - postgresql
+      - python3-psycopg2
+    state: present
+    update_cache: true
+
+# 2) Start PostgreSQL service
+- name: Start postgresql service
+  become: true
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+
+# 3) Ensure postgres database exists
+- name: Ensure postgres database exists
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: postgres
+    state: present
+
+# 4) Ensure PostgreSQL user exists with password
+- name: Ensure PostgreSQL user exists with password
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_user:
+    name: "{{ pg_admin_user }}"
+    password: "{{ pg_admin_password }}"
+    role_attr_flags: LOGIN
+    state: present
+
+# 5) Grant all privileges on postgres database
+- name: Grant all privileges on postgres database
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_privs:
+    type: database
+    db: postgres
+    roles: "{{ pg_admin_user }}"
+    privs: all
+    state: present
+
+# 6) Get pg_hba.conf path dynamically
+- name: Query pg_hba.conf path
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_query:
+    db: postgres
+    query: "SHOW hba_file;"
+  register: pg_hba_query
+
+# 7) Store pg_hba.conf path in variable
+- name: Store pg_hba.conf path
+  ansible.builtin.set_fact:
+    pg_hba_conf_path: "{{ pg_hba_query.query_result[0].hba_file }}"
+
+# 8) Allow all remote connections with md5 auth in pg_hba.conf
+- name: Allow host connections from any address with md5
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_pg_hba:
+    contype: host
+    databases: all
+    users: all
+    address: all
+    method: md5
+    dest: "{{ pg_hba_conf_path }}"
+    state: present
+  notify: restart postgresql
+
+# 9) Listen on all interfaces
+- name: Set listen_addresses to 0.0.0.0
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_set:
+    name: listen_addresses
+    value: "0.0.0.0"
+  notify: restart postgresql
+
+# 10) Tune kernel vm.vfs_cache_pressure
+- name: Set vm.vfs_cache_pressure to 90
+  become: true
+  ansible.builtin.sysctl:
+    name: vm.vfs_cache_pressure
+    value: "90"
+    sysctl_set: true
+    reload: true
+    state: present
+
+# 11) Calculate shared_buffers based on available RAM
+- name: Calculate shared_buffers in MB from total RAM
+  ansible.builtin.set_fact:
+    pg_shared_buffers_mb: >-
+      {{
+        ((ansible_facts.memtotal_mb | int)
+        * ((ansible_facts.memtotal_mb | int) < 1024 | ternary(15, 25))
+        / 100)
+        | round(0, 'floor')
+        | int
+      }}
+
+# 12) Apply shared_buffers setting
+- name: Set shared_buffers
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_set:
+    name: shared_buffers
+    value: "{{ pg_shared_buffers_mb }}MB"
+  notify: restart postgresql
